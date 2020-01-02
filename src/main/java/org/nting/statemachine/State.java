@@ -19,7 +19,7 @@ public class State {
 
     @Override
     public String toString() {
-        return MoreObjects.toStringHelper(this).add("stateHandler", stateHandler).add("stateName", stateName)
-                .add("isPseudo", isPseudo).toString();
+        return MoreObjects.toStringHelper(this).add("stateName", stateName).add("isPseudo", isPseudo)
+                .add("stateHandler", stateHandler).toString();
     }
 }

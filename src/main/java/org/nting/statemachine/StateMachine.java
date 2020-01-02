@@ -173,7 +173,7 @@ public class StateMachine {
         StateMachineEvent stateMachineEvent = (eventSignal == INIT && state.isPseudo)
                 ? new StateMachineEvent(eventSignal, propertiesFromLastStateMachineEvent())
                 : new StateMachineEvent(eventSignal);
-        logger.info("State: {}, Event: {}, StateHandler: {}", state.stateName, stateMachineEvent, state.stateHandler);
+        logger.info("State: {}, Event: {}", state.stateName, stateMachineEvent);
         state.stateHandler.handle(stateMachineEvent);
     }
 
