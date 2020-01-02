@@ -5,8 +5,10 @@ import static org.nting.statemachine.StateMachineSignal.ENTRY;
 import static org.nting.statemachine.StateMachineSignal.EXIT;
 import static org.nting.statemachine.StateMachineSignal.INIT;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 import org.slf4j.Logger;
@@ -26,6 +28,7 @@ public class StateMachine {
     private final Map<State, State> historyStates = Maps.newHashMap();
 
     private final List<Consumer<State>> subscribers = Lists.newLinkedList();
+    private StateMachineEvent lastStateMachineEvent;
 
     public StateMachine(State topState) {
         this.topState = topState;
@@ -39,6 +42,7 @@ public class StateMachine {
 
     public void dispatch(StateMachineEvent stateMachineEvent) {
         logger.info("Event: {}", stateMachineEvent);
+        lastStateMachineEvent = stateMachineEvent;
 
         State oldState = currentState;
 
@@ -68,7 +72,6 @@ public class StateMachine {
         subscribers.forEach(subscriber -> subscriber.accept(currentState));
     }
 
-    // TODO(?) we need to propagate the event properties to the targetState as well
     public void transitionTo(State targetState) {
         Preconditions.checkArgument(targetState != topState);
 
@@ -166,8 +169,16 @@ public class StateMachine {
             historyStates.put(getParentState(state), state);
         }
 
-        StateMachineEvent stateMachineEvent = new StateMachineEvent(eventSignal);
+        // A pseudo state requires the event properties in order to evaluate its condition when handling INIT signal.
+        StateMachineEvent stateMachineEvent = (eventSignal == INIT && state.isPseudo)
+                ? new StateMachineEvent(eventSignal, propertiesFromLastStateMachineEvent())
+                : new StateMachineEvent(eventSignal);
         logger.info("State: {}, Event: {}, StateHandler: {}", state.stateName, stateMachineEvent, state.stateHandler);
         state.stateHandler.handle(stateMachineEvent);
+    }
+
+    private Map<String, Object> propertiesFromLastStateMachineEvent() {
+        return Optional.ofNullable(lastStateMachineEvent).map(StateMachineEvent::getProperties)
+                .orElse(Collections.emptyMap());
     }
 }

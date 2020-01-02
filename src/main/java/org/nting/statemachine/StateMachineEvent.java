@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import com.google.common.base.MoreObjects;
+import com.google.common.collect.ImmutableMap;
 
 public class StateMachineEvent {
     private final IEventSignal eventSignal;
@@ -30,6 +31,10 @@ public class StateMachineEvent {
     @SuppressWarnings("unchecked")
     public <T> T getProperty(String key, T defaultValue) {
         return Optional.ofNullable((T) properties.get(key)).orElse(defaultValue);
+    }
+
+    public Map<String, Object> getProperties() {
+        return ImmutableMap.copyOf(properties);
     }
 
     @Override
