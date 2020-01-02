@@ -2,6 +2,7 @@ package org.nting.statemachine;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +20,8 @@ public class StateMachine {
     private State sourceState;
     private final Map<State, State> historyStates = Maps.newHashMap();
 
+    private final List<Consumer<State>> subscribers = Lists.newLinkedList();
+
     public StateMachine(State topState) {
         this.topState = topState;
         currentState = topState;
@@ -32,10 +35,32 @@ public class StateMachine {
     public void dispatch(StateMachineEvent stateMachineEvent) {
         logger.info("Event: {}", stateMachineEvent);
 
+        State oldState = currentState;
+
         sourceState = currentState;
         while (sourceState != null) {
             sourceState = sourceState.stateHandler.handle(stateMachineEvent);
         }
+
+        if (oldState != currentState) {
+            notifySubscribers();
+        }
+    }
+
+    public State getState() {
+        return currentState;
+    }
+
+    public Subscription subscribe(Consumer<State> subscriber) {
+        Preconditions.checkArgument(!subscribers.contains(subscriber));
+
+        subscribers.add(subscriber);
+
+        return () -> subscribers.remove(subscriber);
+    }
+
+    private void notifySubscribers() {
+        subscribers.forEach(subscriber -> subscriber.accept(currentState));
     }
 
     // TODO(?) we need to propagate the event properties to the targetState as well
