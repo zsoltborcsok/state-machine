@@ -1,5 +1,10 @@
 package org.nting.statemachine;
 
+import static org.nting.statemachine.StateMachineSignal.EMPTY;
+import static org.nting.statemachine.StateMachineSignal.ENTRY;
+import static org.nting.statemachine.StateMachineSignal.EXIT;
+import static org.nting.statemachine.StateMachineSignal.INIT;
+
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -29,7 +34,7 @@ public class StateMachine {
     }
 
     public void initialize() {
-        trigger(topState, StateMachineSignal.INIT);
+        trigger(topState, INIT);
     }
 
     public void dispatch(StateMachineEvent stateMachineEvent) {
@@ -87,7 +92,7 @@ public class StateMachine {
         while (state != sourceState) {
             Preconditions.checkNotNull(state);
 
-            trigger(state, StateMachineSignal.EXIT);
+            trigger(state, EXIT);
             state = getParentState(state);
         }
     }
@@ -95,13 +100,13 @@ public class StateMachine {
     private void doTransitionTo(State targetState) {
         // NOTE: Dynamic version of calling exit and entry events.
         if (sourceState == targetState) {// transition to self
-            trigger(sourceState, StateMachineSignal.EXIT);
-            trigger(sourceState, StateMachineSignal.ENTRY);
+            trigger(sourceState, EXIT);
+            trigger(sourceState, ENTRY);
         } else if (getParentState(sourceState) == getParentState(targetState)) {// same level (most common)
-            trigger(sourceState, StateMachineSignal.EXIT);
-            trigger(targetState, StateMachineSignal.ENTRY);
+            trigger(sourceState, EXIT);
+            trigger(targetState, ENTRY);
         } else if (currentState == getParentState(targetState)) {// initial transition
-            trigger(targetState, StateMachineSignal.ENTRY);
+            trigger(targetState, ENTRY);
         } else {// different level
             List<State> parentsOfSourceState = Lists.newLinkedList();
             State state = sourceState;
@@ -126,10 +131,10 @@ public class StateMachine {
                 }
             }
             for (int i = parentsOfSourceState.size() - 1; i >= firstNotCommonParentIndex; i--) {
-                trigger(parentsOfSourceState.get(i), StateMachineSignal.EXIT);
+                trigger(parentsOfSourceState.get(i), EXIT);
             }
             for (int i = firstNotCommonParentIndex; i < parentsOfTargetState.size(); i++) {
-                trigger(parentsOfTargetState.get(i), StateMachineSignal.ENTRY);
+                trigger(parentsOfTargetState.get(i), ENTRY);
             }
         }
     }
@@ -137,13 +142,13 @@ public class StateMachine {
     private void doActivateTargetState(State targetState) {
         currentState = targetState;
         sourceState = currentState;
-        trigger(currentState, StateMachineSignal.INIT);
+        trigger(currentState, INIT);
     }
 
     private void doActivateTargetStateForHistory(State targetState, boolean isDeepHistory) {
         while (historyStates.containsKey(targetState)) {
             targetState = historyStates.get(targetState);
-            trigger(targetState, StateMachineSignal.ENTRY);
+            trigger(targetState, ENTRY);
             if (!isDeepHistory) {
                 break;
             }
@@ -153,11 +158,11 @@ public class StateMachine {
     }
 
     private State getParentState(State state) {
-        return state.stateHandler.handle(new StateMachineEvent(StateMachineSignal.EMPTY));
+        return state.stateHandler.handle(new StateMachineEvent(EMPTY));
     }
 
     private void trigger(State state, IEventSignal eventSignal) {
-        if (eventSignal == StateMachineSignal.ENTRY && !state.isPseudo) {
+        if (eventSignal == ENTRY && !state.isPseudo) {
             historyStates.put(getParentState(state), state);
         }
 
