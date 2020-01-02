@@ -1,5 +1,6 @@
 package org.nting.statemachine;
 
+import static org.junit.Assert.assertEquals;
 import static org.nting.statemachine.StateMachineSignal.INIT;
 import static org.nting.statemachine.StateMachineTest.KeySignal.KEY_1;
 import static org.nting.statemachine.StateMachineTest.KeySignal.KEY_2;
@@ -8,8 +9,6 @@ import static org.nting.statemachine.StateMachineTest.KeySignal.KEY_4;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableMap;
 
@@ -18,8 +17,6 @@ public class StateMachineTest {
     public enum KeySignal implements IEventSignal {
         KEY_1, KEY_2, KEY_3, KEY_4
     }
-
-    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private StateMachine stateMachine;
 
@@ -174,29 +171,73 @@ public class StateMachineTest {
     }
 
     @Test
-    public void testStateMachine() {
-        logger.info("[INITIALIZE]");
+    public void testStateMachine_HistoryAndDeepHistory() {
         stateMachine.initialize();
-        logger.info("[HISTORY - DEEP HISTORY POINT TEST]");
+        assertEquals(state111, stateMachine.getState());
+
+        // Transition to history on a parent state (state1 -> state2 [no history])
         stateMachine.dispatch(new StateMachineEvent(KEY_2));
+        assertEquals(state211, stateMachine.getState()); // Initial transitions leads to state211
+
+        // Prepare a distinct history state
         stateMachine.dispatch(new StateMachineEvent(KEY_3));
+        assertEquals(state212, stateMachine.getState());
+
+        // Transition to deep history on a parent state (state2 -> state1 [state11, state111])
         stateMachine.dispatch(new StateMachineEvent(KEY_1));
+        assertEquals(state111, stateMachine.getState()); // Note INIT signal is only on state111
+
+        // Prepare a distinct history state
         stateMachine.dispatch(new StateMachineEvent(KEY_4));
+        assertEquals(state112, stateMachine.getState());
+
+        // Transition to history on a parent state (state1 -> state2 [state21, state212])
         stateMachine.dispatch(new StateMachineEvent(KEY_2));
+        assertEquals(state211, stateMachine.getState()); // state21 + initial transition to state211 (not deep)
+
         stateMachine.dispatch(new StateMachineEvent(KEY_3));
+        assertEquals(state212, stateMachine.getState());
+
+        // Transition to deep history on a parent state (state2 -> state1 [state11, state112])
         stateMachine.dispatch(new StateMachineEvent(KEY_1));
-        logger.info("[CONDITION POINT TEST]");
+        assertEquals(state112, stateMachine.getState()); // Note INIT signal is only on state112
+    }
+
+    @Test
+    public void testStateMachine_ConditionPoint() {
+        stateMachine.initialize();
+        stateMachine.dispatch(new StateMachineEvent(KEY_4));
+        assertEquals(state112, stateMachine.getState());
+
+        stateMachine.dispatch(new StateMachineEvent(KEY_4, ImmutableMap.of("count", 1)));
+        assertEquals(state211, stateMachine.getState());
+
+        stateMachine.dispatch(new StateMachineEvent(KEY_1));
+        assertEquals(state112, stateMachine.getState());
+
         stateMachine.dispatch(new StateMachineEvent(KEY_4, ImmutableMap.of("count", -1)));
-        stateMachine.dispatch(new StateMachineEvent(KEY_1));
-        stateMachine.dispatch(new StateMachineEvent(KEY_4));
-        logger.info("[BRANCH POINT TEST]");
+        assertEquals(state111, stateMachine.getState());
+
+    }
+
+    @Test
+    public void testStateMachine_BranchPoint() {
+        stateMachine.initialize();
         stateMachine.dispatch(new StateMachineEvent(KEY_2));
         stateMachine.dispatch(new StateMachineEvent(KEY_3));
-        logger.info("[NOW]");
+        assertEquals(state212, stateMachine.getState());
+
+        stateMachine.dispatch(new StateMachineEvent(KEY_3, ImmutableMap.of("count", 0)));
+        assertEquals(state212, stateMachine.getState()); // Transition to the previous state (state212)
+
+        stateMachine.dispatch(new StateMachineEvent(KEY_3, ImmutableMap.of("count", 1)));
+        assertEquals(state211, stateMachine.getState()); // Transition to the state211
+
         stateMachine.dispatch(new StateMachineEvent(KEY_3));
-        stateMachine.dispatch(new StateMachineEvent(KEY_3));
-        stateMachine.dispatch(new StateMachineEvent(KEY_3));
-        stateMachine.dispatch(new StateMachineEvent(KEY_3));
+        assertEquals(state212, stateMachine.getState());
+
+        stateMachine.dispatch(new StateMachineEvent(KEY_3, ImmutableMap.of("count", 2)));
+        assertEquals(state111, stateMachine.getState()); // Transition to the state11 (+ an initial transition)
     }
 
 }
